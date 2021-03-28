@@ -84,10 +84,20 @@ done
 # parse arguments
 for argument in "$@"
 do
-	if [ -d $argument ]	&& $recursive; then
-		echo "parsing directory recursively"
+	# handle directories recursively
+	if [ -d $argument ] && $recursive; then
+		# obtain list of files within directory in reverse order
+		files="$(find $argument | sed '1!G;h;$!d')"
+		
+		# modify each file
+		for file in $files
+		do
+			modify $file
+		done
+		
 		continue
 	fi
 	
+	# standard mode of operation
 	modify $argument
 done
