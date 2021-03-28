@@ -3,24 +3,24 @@
 modify()
 {
 	# split argument into path and name
-	basename="$(basename $1)"
-	dirname="$(dirname $1)"
+	basename="$(basename -- $1)"
+	dirname="$(dirname -- $1)"
 	
 	# modify name according to mode
 	case $mode in
 		lowercase)
-			basename="$(echo $basename | tr [:upper:] [:lower:])"
+			outputname="$(echo ./$basename | tr [:upper:] [:lower:])"
 			;;
 		uppercase)
-			basename="$(echo $basename | tr [:lower:] [:upper:])"
+			outputname="$(echo ./$basename | tr [:lower:] [:upper:])"
 			;;
 		sed)
-			basename="$(echo $basename | sed $sedpattern)"
+			outputname="$(echo ./$basename | sed $sedpattern)"
 			;;
 	esac
 	
 	# implement change, don't overwrite files and don't move into directories
-	mv -nT "$1" "$dirname/$basename"
+	mv -nT "$dirname/$basename" "$dirname/$outputname"
 }
 
 # define mode of operation
