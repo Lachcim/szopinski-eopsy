@@ -1,5 +1,28 @@
 #!/bin/sh
 
+modify()
+{
+	# split argument into path and name
+	basename="$(basename $1)"
+	dirname="$(dirname $1)"
+	
+	# modify name according to mode
+	case $mode in
+		lowercase)
+			basename="$(echo $basename | tr [:upper:] [:lower:])"
+			;;
+		uppercase)
+			basename="$(echo $basename | tr [:lower:] [:upper:])"
+			;;
+		sed)
+			basename="$(echo $basename | sed $sedpattern)"
+			;;
+	esac
+	
+	# implement change, don't overwrite files and don't move into directories
+	mv -nT "$1" "$dirname/$basename"
+}
+
 # define mode of operation
 mode="sed"
 recursive=false
@@ -66,23 +89,5 @@ do
 		continue
 	fi
 	
-	# split argument into path and name
-	basename="$(basename $argument)"
-	dirname="$(dirname $argument)"
-	
-	# modify name according to mode
-	case $mode in
-		lowercase)
-			basename="$(echo $basename | tr [:upper:] [:lower:])"
-			;;
-		uppercase)
-			basename="$(echo $basename | tr [:lower:] [:upper:])"
-			;;
-		sed)
-			basename="$(echo $basename | sed $sedpattern)"
-			;;
-	esac
-	
-	# implement change, don't overwrite files and don't move into directories
-	mv -nT "$argument" "$dirname/$basename"
+	modify $argument
 done
