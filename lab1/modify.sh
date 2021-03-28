@@ -40,8 +40,16 @@ do
 	esac
 done
 
-# ensure all specified files/directories exist
+# shift out options
 shift "$((OPTIND-1))"
+
+# probe and shift out sed pattern
+if [ $mode = "sed" ]; then
+	sedpattern=$1
+	shift 1
+fi
+
+# ensure all specified files/directories exist
 for argument in "$@"
 do
 	if [ ! -e $argument ]; then
@@ -71,7 +79,7 @@ do
 			basename="$(echo $basename | tr [:lower:] [:upper:])"
 			;;
 		sed)
-			echo "not implemented"
+			basename="$(echo $basename | sed $sedpattern)"
 			;;
 	esac
 	
