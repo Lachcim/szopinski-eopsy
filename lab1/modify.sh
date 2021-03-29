@@ -57,7 +57,10 @@ do
 			;;
 		h)
 			# print help and quit
-			echo help
+			echo "Usage:"
+			echo "\tmodify [-r] [-l|-u] <dir/file names...>"
+			echo "\tmodify [-r] <sed pattern> <dir/file names...>"
+  			echo "\tmodify [-h]"
 			exit
 			;;
 	esac
