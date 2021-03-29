@@ -3,8 +3,8 @@
 modify()
 {
 	# split argument into path and name
-	basename="$(basename -- $1)"
-	dirname="$(dirname -- $1)"
+	basename=$(basename -- "$1")
+	dirname=$(dirname -- "$1")
 	
 	# modify name according to mode
 	case $mode in
@@ -68,14 +68,19 @@ shift "$((OPTIND-1))"
 
 # probe and shift out sed pattern
 if [ $mode = "sed" ]; then
+	if [ $# = 0 ]; then
+		echo "Missing sed pattern" >&2
+		exit 1
+	fi
+	
 	sedpattern=$1
-	shift 1
+	shift
 fi
 
 # ensure all specified files/directories exist
 for argument in "$@"
 do
-	if [ ! -e $argument ]; then
+	if [ ! -e "$argument" ]; then
 		echo "File $argument doesn't exist" >&2
 		exit 2
 	fi
@@ -85,19 +90,21 @@ done
 for argument in "$@"
 do
 	# handle directories recursively
-	if [ -d $argument ] && $recursive; then
+	if [ -d "$argument" ] && $recursive; then
 		# obtain list of files within directory in reverse order
-		files="$(find $argument | sed '1!G;h;$!d')"
+		files=$(find "$argument" | sed '1!G;h;$!d')
 		
 		# modify each file
+		IFS='
+		'
 		for file in $files
 		do
-			modify $file
+			modify "$file"
 		done
 		
 		continue
 	fi
 	
 	# standard mode of operation
-	modify $argument
+	modify "$argument"
 done
