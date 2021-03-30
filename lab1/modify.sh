@@ -94,8 +94,8 @@ for argument in "$@"
 do
 	# handle directories recursively
 	if [ -d "$argument" ] && $recursive; then
-		# obtain list of files within directory in reverse order
-		files=$(find "$argument" | sed '1!G;h;$!d')
+		# obtain list of files within directory
+		files=$(find "$argument" -type f)
 		
 		# modify each file
 		IFS='
@@ -109,5 +109,7 @@ do
 	fi
 	
 	# standard mode of operation
-	modify "$argument"
+	if [ -f "$argument" ]; then
+		modify "$argument"
+	fi
 done

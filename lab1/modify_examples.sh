@@ -49,21 +49,21 @@ echo "\nBasic use cases:\n"
 find /tmp/modify_examples/test_basic
 ( set -x; ./modify.sh -l /tmp/modify_examples/test_basic/* )
 find /tmp/modify_examples/test_basic
-( set -x; ./modify.sh s/dir/catalog/ /tmp/modify_examples/test_basic/* )
+( set -x; ./modify.sh s/file/myfile/ /tmp/modify_examples/test_basic/* )
 find /tmp/modify_examples/test_basic
 
 echo "\nRecursive use cases:\n"
 
 ( set -x; ./modify.sh -ur /tmp/modify_examples/test_recursion )
-find /tmp/modify_examples/TEST_RECURSION
-( set -x; ./modify.sh -lr /tmp/modify_examples/TEST_RECURSION )
+find /tmp/modify_examples/test_recursion
+( set -x; ./modify.sh -lr /tmp/modify_examples/test_recursion )
 find /tmp/modify_examples/test_recursion
 
 echo "\nSpecial character use cases:\n"
 
 ( set -x; ./modify.sh -ur /tmp/modify_examples/test_special )
-find /tmp/modify_examples/TEST_SPECIAL
-( set -x; ./modify.sh -lr /tmp/modify_examples/TEST_SPECIAL )
+find /tmp/modify_examples/test_special
+( set -x; ./modify.sh -lr /tmp/modify_examples/test_special )
 find /tmp/modify_examples/test_special
 
 echo "\nTest over."
