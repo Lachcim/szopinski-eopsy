@@ -13,7 +13,7 @@ bool aborted = false;
 int main() {
 	#ifdef WITH_SIGNALS
 		//ignore all signals
-		struct sigaction oldActions[NSIG - 1];
+		struct sigaction oldActions[NSIG];
 		for (int signal = 1; signal < NSIG; signal++)
 			setSignalHandler(signal, SIG_IGN, &oldActions[signal - 1]);
 		
