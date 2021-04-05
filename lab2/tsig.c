@@ -1,8 +1,10 @@
 #include <unistd.h>
 #include <signal.h>
 #include <sys/wait.h>
+#include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
 
 #ifndef NUM_CHILD
 	#define NUM_CHILD 7
@@ -11,6 +13,7 @@
 void setSignalHandler(int, void (*)(int));
 void interruptHandler(int);
 void terminationHandler(int);
+void safeSleep(time_t);
 
 pid_t childPids[NUM_CHILD];
 
@@ -58,15 +61,22 @@ int main() {
 		
 		//insert delay between forks
 		if (i != NUM_CHILD - 1)
-			sleep(1);
+			safeSleep(1);
 	}
 	
 	printf("All child processes forked\n");
 	
 	//wait for children to terminate
 	int terminations = 0;
-	while (wait(NULL) != -1)
+	while (1) {
+		//continue on interrupts, break when finished
+		if (wait(NULL) == -1) {
+			if (errno == EINTR) continue;
+			if (errno == ECHILD) break;
+		}
+		
 		terminations++;
+	}
 	
 	printf("All %d child processes terminated\n", terminations);
 }
@@ -88,4 +98,11 @@ void setSignalHandler(int signal, void (*handler)(int)) {
 	
 	//apply action
 	sigaction(signal, &action, NULL);
+}
+void safeSleep(time_t seconds) {
+	//wait for the specified number of seconds, restart after signal interrupt
+	struct timespec timestruct;
+	timestruct.tv_sec = seconds;
+	timestruct.tv_nsec = 0;
+	while (nanosleep(&timestruct, &timestruct));
 }
