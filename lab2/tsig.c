@@ -3,7 +3,9 @@
 #include <sys/wait.h>
 #include <stdio.h>
 
-#define NUM_CHILD 7
+#ifndef NUM_CHILD
+	#define NUM_CHILD 7
+#endif
 
 pid_t childPids[NUM_CHILD];
 
