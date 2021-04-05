@@ -13,12 +13,13 @@ bool aborted = false;
 int main() {
 	#ifdef WITH_SIGNALS
 		//ignore all signals
+		struct sigaction oldActions[NSIG - 1];
 		for (int signal = 1; signal < NSIG; signal++)
-			setSignalHandler(signal, SIG_IGN);
+			setSignalHandler(signal, SIG_IGN, &oldActions[signal - 1]);
 		
 		//restore default child handler, set custom keyboard interrupt handler
-		setSignalHandler(SIGCHLD, SIG_DFL);
-		setSignalHandler(SIGINT, interruptHandler);
+		setSignalHandler(SIGCHLD, SIG_DFL, NULL);
+		setSignalHandler(SIGINT, interruptHandler, NULL);
 	#endif
 	
 	//fork the defined number of processes
@@ -71,13 +72,19 @@ int main() {
 	}
 	
 	printf("parent[%d]: %d child processes terminated\n", getpid(), terminations);
+	
+	#ifdef WITH_SIGNALS
+		//restore old handlers
+		for (int signal = 1; signal < NSIG; signal++)
+			sigaction(signal, &oldActions[signal - 1], NULL);
+	#endif
 }
 
 void childHandler() {
 	#ifdef WITH_SIGNALS
 		//disable keyboard interrupt handler, set custom termination handler
-		setSignalHandler(SIGINT, SIG_IGN);
-		setSignalHandler(SIGTERM, terminationHandler);
+		setSignalHandler(SIGINT, SIG_IGN, NULL);
+		setSignalHandler(SIGTERM, terminationHandler, NULL);
 	#endif
 	
 	//live for 10 seconds and print status messages
@@ -87,17 +94,17 @@ void childHandler() {
 }
 void interruptHandler(int signal) {
 	//print message and set abort flag
-	printf("parent[%d]: keyboard interrupt received\n", getpid());
+	fprintf(stderr, "parent[%d]: keyboard interrupt received\n", getpid());
 	aborted = true;
 }
 void terminationHandler(int signal) {
 	//print message and exit
-	printf("child[%d]: process terminated\n", getpid());
+	fprintf(stderr, "child[%d]: process terminated\n", getpid());
 	exit(0);
 }
 
 #ifdef WITH_SIGNALS
-	void setSignalHandler(int signal, void (*handler)(int)) {
+	void setSignalHandler(int signal, void (*handler)(int), struct sigaction* old) {
 		//construct signal action structure
 		struct sigaction action;
 		action.sa_handler = handler;
@@ -105,6 +112,6 @@ void terminationHandler(int signal) {
 		sigemptyset(&action.sa_mask);
 		
 		//apply action
-		sigaction(signal, &action, NULL);
+		sigaction(signal, &action, old);
 	}
 #endif
