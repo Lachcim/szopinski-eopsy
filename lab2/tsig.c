@@ -35,8 +35,11 @@ int main() {
 		
 		//terminate living children on fork failure
 		if (childPid == -1) {
-			fprintf(stderr, "Child #%d failed to spawn, aborting\n", i);
-			killChildren(i);
+			fprintf(stderr, "parent[%d]: child #%d failed to spawn, aborting\n", getpid(), i);
+			
+			for (int j = 0; j < i; j++)
+				kill(childPids[j], SIGTERM);
+				
 			return 1;
 		}
 		
@@ -46,8 +49,11 @@ int main() {
 		
 		//break loop on keyboard interrupt
 		if (aborted) {
-			fprintf(stderr, "Aborting due to a keyboard interrupt\n");
-			killChildren(i + 1);
+			fprintf(stderr, "parent[%d]: aborting due to a keyboard interrupt\n", getpid());
+			
+			for (int j = 0; j <= i; j++)
+				kill(childPids[j], SIGTERM);
+				
 			break;
 		}
 	}
@@ -64,7 +70,7 @@ int main() {
 		terminations++;
 	}
 	
-	printf("%d child processes terminated\n", terminations);
+	printf("parent[%d]: %d child processes terminated\n", getpid(), terminations);
 }
 
 void childHandler() {
@@ -75,24 +81,19 @@ void childHandler() {
 	#endif
 	
 	//live for 10 seconds and print status messages
-	printf("Child process %d born, my parent is %d\n", getpid(), getppid());
+	printf("child[%d]: new process born, my parent is %d\n", getpid(), getppid());
 	sleep(10);
-	printf("Child process %d signing out\n", getpid());
+	printf("child[%d]: process finished\n", getpid());
 }
 void interruptHandler(int signal) {
 	//print message and set abort flag
-	printf("Keyboard interrupt received\n");
+	printf("parent[%d]: keyboard interrupt received\n", getpid());
 	aborted = true;
 }
 void terminationHandler(int signal) {
 	//print message and exit
-	printf("Child process %d terminated\n", getpid());
+	printf("child[%d]: process terminated\n", getpid());
 	exit(0);
-}
-void killChildren(int count) {
-	//terminate all child processes
-	for (int i = 0; i < count; i++)
-		kill(childPids[i], SIGTERM);
 }
 
 #ifdef WITH_SIGNALS

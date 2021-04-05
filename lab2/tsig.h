@@ -9,4 +9,3 @@
 void childHandler();
 void interruptHandler(int);
 void terminationHandler(int);
-void killChildren();
