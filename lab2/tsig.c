@@ -5,16 +5,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <stdbool.h>
-
-#ifndef NUM_CHILD
-	#define NUM_CHILD 7
-#endif
-
-void setSignalHandler(int, void (*)(int));
-void killChildren();
-void childHandler();
-void interruptHandler(int);
-void terminationHandler(int);
+#include "tsig.h"
 
 pid_t childPids[NUM_CHILD];
 bool aborted = false;
@@ -98,19 +89,21 @@ void terminationHandler(int signal) {
 	printf("Child process %d terminated\n", getpid());
 	exit(0);
 }
-
-void setSignalHandler(int signal, void (*handler)(int)) {
-	//construct signal action structure
-	struct sigaction action;
-	action.sa_handler = handler;
-	action.sa_flags = 0;
-	sigemptyset(&action.sa_mask);
-	
-	//apply action
-	sigaction(signal, &action, NULL);
-}
 void killChildren(int count) {
 	//terminate all child processes
 	for (int i = 0; i < count; i++)
 		kill(childPids[i], SIGTERM);
 }
+
+#ifdef WITH_SIGNALS
+	void setSignalHandler(int signal, void (*handler)(int)) {
+		//construct signal action structure
+		struct sigaction action;
+		action.sa_handler = handler;
+		action.sa_flags = 0;
+		sigemptyset(&action.sa_mask);
+		
+		//apply action
+		sigaction(signal, &action, NULL);
+	}
+#endif
