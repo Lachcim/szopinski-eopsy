@@ -1,5 +1,4 @@
 #include <unistd.h>
-#include <signal.h>
 #include <sys/wait.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -8,7 +7,7 @@
 #include "tsig.h"
 
 pid_t childPids[NUM_CHILD];
-bool aborted = false;
+volatile sig_atomic_t aborted = false;
 
 int main() {
 	#ifdef WITH_SIGNALS
@@ -17,7 +16,7 @@ int main() {
 		for (int signal = 1; signal < NSIG; signal++)
 			setSignalHandler(signal, SIG_IGN, &oldActions[signal - 1]);
 		
-		//restore default child handler, set custom keyboard interrupt handler
+		//restore default child signal handler, set custom keyboard interrupt handler
 		setSignalHandler(SIGCHLD, SIG_DFL, NULL);
 		setSignalHandler(SIGINT, interruptHandler, NULL);
 	#endif
@@ -48,16 +47,22 @@ int main() {
 		if (i != NUM_CHILD - 1)
 			sleep(1);
 		
-		//break loop on keyboard interrupt
-		if (aborted) {
-			fprintf(stderr, "parent[%d]: aborting due to a keyboard interrupt\n", getpid());
-			
-			for (int j = 0; j <= i; j++)
-				kill(childPids[j], SIGTERM);
+		#ifdef WITH_SIGNALS
+			//break loop on keyboard interrupt
+			if (aborted) {
+				fprintf(stderr, "parent[%d]: aborting due to a keyboard interrupt\n", getpid());
 				
-			break;
-		}
+				for (int j = 0; j <= i; j++)
+					kill(childPids[j], SIGTERM);
+					
+				break;
+			}
+		#endif
 	}
+	
+	//confirm successful creation
+	if (!aborted)
+		printf("parent[%d]: all child processes created\n", getpid());
 	
 	//wait for children to terminate
 	int terminations = 0;
@@ -71,6 +76,7 @@ int main() {
 		terminations++;
 	}
 	
+	//confirm termination
 	printf("parent[%d]: %d child processes terminated\n", getpid(), terminations);
 	
 	#ifdef WITH_SIGNALS
@@ -92,16 +98,6 @@ void childHandler() {
 	sleep(10);
 	printf("child[%d]: process finished\n", getpid());
 }
-void interruptHandler(int signal) {
-	//print message and set abort flag
-	fprintf(stderr, "parent[%d]: keyboard interrupt received\n", getpid());
-	aborted = true;
-}
-void terminationHandler(int signal) {
-	//print message and exit
-	fprintf(stderr, "child[%d]: process terminated\n", getpid());
-	exit(0);
-}
 
 #ifdef WITH_SIGNALS
 	void setSignalHandler(int signal, void (*handler)(int), struct sigaction* old) {
@@ -113,5 +109,16 @@ void terminationHandler(int signal) {
 		
 		//apply action
 		sigaction(signal, &action, old);
+	}
+	
+	void interruptHandler(int signal) {
+		//print message and set abort flag
+		fprintf(stderr, "parent[%d]: keyboard interrupt received\n", getpid());
+		aborted = true;
+	}
+	void terminationHandler(int signal) {
+		//print message and exit
+		fprintf(stderr, "child[%d]: process terminated\n", getpid());
+		exit(0);
 	}
 #endif
