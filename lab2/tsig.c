@@ -1,26 +1,28 @@
 #include <unistd.h>
 #include <signal.h>
 #include <sys/wait.h>
-#include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <stdbool.h>
 
 #ifndef NUM_CHILD
 	#define NUM_CHILD 7
 #endif
 
 void setSignalHandler(int, void (*)(int));
+void killChildren();
+void childHandler();
 void interruptHandler(int);
 void terminationHandler(int);
-void safeSleep(time_t);
 
 pid_t childPids[NUM_CHILD];
+bool aborted = false;
 
 int main() {
 	#ifdef WITH_SIGNALS
 		//ignore all signals
-		for (int signal = 1; signal < 32; signal++)
+		for (int signal = 1; signal < NSIG; signal++)
 			setSignalHandler(signal, SIG_IGN);
 		
 		//restore default child handler, set custom keyboard interrupt handler
@@ -36,35 +38,28 @@ int main() {
 		
 		//algorithm for the child process
 		if (childPid == 0) {
-			#ifdef WITH_SIGNALS
-				//disable keyboard interrupt handler, set custom termination handler
-				setSignalHandler(SIGINT, SIG_IGN);
-				setSignalHandler(SIGTERM, terminationHandler);
-			#endif
-			
-			printf("Child process %d born, my parent is %d\n", getpid(), getppid());
-			sleep(10);
-			
-			printf("Child process %d signing out\n", getpid());
+			childHandler();
 			return 0;
 		}
 		
 		//terminate living children on fork failure
 		if (childPid == -1) {
 			fprintf(stderr, "Child #%d failed to spawn, aborting\n", i);
-			
-			for (int j = 0; j < i; j++)
-				kill(childPids[j], SIGTERM);
-			
+			killChildren(i);
 			return 1;
 		}
 		
 		//insert delay between forks
 		if (i != NUM_CHILD - 1)
-			safeSleep(1);
+			sleep(1);
+		
+		//break loop on keyboard interrupt
+		if (aborted) {
+			fprintf(stderr, "Aborting due to a keyboard interrupt\n");
+			killChildren(i + 1);
+			break;
+		}
 	}
-	
-	printf("All child processes forked\n");
 	
 	//wait for children to terminate
 	int terminations = 0;
@@ -78,13 +73,28 @@ int main() {
 		terminations++;
 	}
 	
-	printf("All %d child processes terminated\n", terminations);
+	printf("%d child processes terminated\n", terminations);
 }
 
+void childHandler() {
+	#ifdef WITH_SIGNALS
+		//disable keyboard interrupt handler, set custom termination handler
+		setSignalHandler(SIGINT, SIG_IGN);
+		setSignalHandler(SIGTERM, terminationHandler);
+	#endif
+	
+	//live for 10 seconds and print status messages
+	printf("Child process %d born, my parent is %d\n", getpid(), getppid());
+	sleep(10);
+	printf("Child process %d signing out\n", getpid());
+}
 void interruptHandler(int signal) {
+	//print message and set abort flag
 	printf("Keyboard interrupt received\n");
+	aborted = true;
 }
 void terminationHandler(int signal) {
+	//print message and exit
 	printf("Child process %d terminated\n", getpid());
 	exit(0);
 }
@@ -99,10 +109,8 @@ void setSignalHandler(int signal, void (*handler)(int)) {
 	//apply action
 	sigaction(signal, &action, NULL);
 }
-void safeSleep(time_t seconds) {
-	//wait for the specified number of seconds, restart after signal interrupt
-	struct timespec timestruct;
-	timestruct.tv_sec = seconds;
-	timestruct.tv_nsec = 0;
-	while (nanosleep(&timestruct, &timestruct));
+void killChildren(int count) {
+	//terminate all child processes
+	for (int i = 0; i < count; i++)
+		kill(childPids[i], SIGTERM);
 }
