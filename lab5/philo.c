@@ -52,6 +52,17 @@ void* printStatus(void* arg) {
 	}
 }
 
+void grabForks(int philosopher) {
+	//set state to waiting and update philosopher
+	philoStates[philosopher].stateNo = 1;
+	sem_post(&philoStates[philosopher].updateSem);
+}
+void putAwayForks(int philosopher) {
+	//set state to thinking and update philosopher
+	philoStates[philosopher].stateNo = 0;
+	sem_post(&philoStates[philosopher].updateSem);
+}
+
 int main() {
 	//spawn printer thread - will print on state change
 	pthread_t printer;
@@ -72,9 +83,11 @@ int main() {
 			continue;
 		}
 		
-		//change thinking to waiting; waiting or eating to thinking
-		philoStates[input].stateNo = !philoStates[input].stateNo;
-		sem_post(&philoStates[input].updateSem);
+		//grab or put away forks
+		if (philoStates[input].stateNo == 0) grabForks(input);
+		else putAwayForks(input);
+		
+		//print immediate changes
 		sem_post(&printerSem);
 	}
 }
