@@ -4,11 +4,13 @@
 */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdbool.h>
 #include <semaphore.h>
 #include <sys/ipc.h>
 #include <sys/sem.h>
 #include <pthread.h>
+#include <signal.h>
 
 //philosopher structure with individual update semaphore
 struct philoState_t {
@@ -21,6 +23,7 @@ struct philoState_t philoStates[5] = {0};
 int forks = -1;
 
 void printStatus();
+void cleanUp();
 
 void* simulatePhilosopher(void* rawState) {
 	//cast to proper pointer for ease of use, remember index
@@ -91,6 +94,13 @@ int main() {
 	for (int i = 0; i < 5; i++)
 		pthread_create(&philosophers[i], NULL, simulatePhilosopher, &philoStates[i]);
 	
+	//break on keyboard interrupt
+	struct sigaction action;
+	action.sa_handler = cleanUp;
+	action.sa_flags = 0;
+	sigemptyset(&action.sa_mask);
+	sigaction(SIGINT, &action, NULL);
+	
 	//print initial status
 	printStatus();
 	
@@ -128,4 +138,9 @@ void printStatus() {
 	//print prompt
 	printf("\n\nWho shall pick up or put down their forks: ");
 	fflush(stdout);
+}
+void cleanUp(int signal) {
+	//remove semaphore set and exit
+	semctl(forks, 0, IPC_RMID);
+	exit(0);
 }
