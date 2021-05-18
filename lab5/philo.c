@@ -24,6 +24,8 @@ int forks = -1;
 
 void printStatus();
 void cleanUp();
+void grabForks(int);
+void putAwayForks(int);
 
 void* simulatePhilosopher(void* rawState) {
 	//cast to proper pointer for ease of use, remember index
@@ -35,54 +37,52 @@ void* simulatePhilosopher(void* rawState) {
 		sem_wait(&state->updateSem);
 		
 		if (state->stateNo == 1) {
-			//print waiting state
+			//print waiting state and attempt to grab forks
 			printStatus();
-			
-			//attempt to eat, pick up forks once they're available
-			struct sembuf operations[4];
-			for (int i = 0; i < 2; i++) {
-				operations[i].sem_num = i ? index : ((index + 1) % 5);
-				operations[i].sem_op = 0;
-				operations[i].sem_flg = 0;
-			}
-			for (int i = 2; i < 4; i++) {
-				operations[i].sem_num = (i - 2) ? index : ((index + 1) % 5);
-				operations[i].sem_op = 1;
-				operations[i].sem_flg = 0;
-			}
-			semop(forks, operations, 4);
+			grabForks(index);
 			
 			//on success, set state to eating and reprint
 			state->stateNo = 2;
 			printStatus();
 		}
 		else {
-			//put away forks
-			struct sembuf operations[2];
-			for (int i = 0; i < 2; i++) {
-				operations[i].sem_num = i ? index : ((index + 1) % 5);
-				operations[i].sem_op = -1;
-				operations[i].sem_flg = 0;
-			}
-			semop(forks, operations, 2);
+			//put away forks and reprint
+			putAwayForks(index);
 			printStatus();
 		}
 	}
 }
 
-void grabForks(int philosopher) {
-	//set state to waiting and update philosopher
-	philoStates[philosopher].stateNo = 1;
-	sem_post(&philoStates[philosopher].updateSem);
-}
-void putAwayForks(int philosopher) {
-	//don't disturb waiting philosopher
-	if (philoStates[philosopher].stateNo == 1)
-		return;
+void grabForks(int index) {
+	struct sembuf operations[4];
 	
-	//set state to thinking and update philosopher
-	philoStates[philosopher].stateNo = 0;
-	sem_post(&philoStates[philosopher].updateSem);
+	//pick up forks once they're available
+	for (int i = 0; i < 2; i++) {
+		operations[i].sem_num = i ? index : ((index + 1) % 5);
+		operations[i].sem_op = 0;
+		operations[i].sem_flg = 0;
+	}
+	
+	//mark forks as taken
+	for (int i = 2; i < 4; i++) {
+		operations[i].sem_num = (i - 2) ? index : ((index + 1) % 5);
+		operations[i].sem_op = 1;
+		operations[i].sem_flg = 0;
+	}
+	
+	semop(forks, operations, 4);
+}
+void putAwayForks(int index) {
+	struct sembuf operations[2];
+	
+	//mark forks as available
+	for (int i = 0; i < 2; i++) {
+		operations[i].sem_num = i ? index : ((index + 1) % 5);
+		operations[i].sem_op = -1;
+		operations[i].sem_flg = 0;
+	}
+	
+	semop(forks, operations, 2);
 }
 
 int main() {
@@ -113,9 +113,15 @@ int main() {
 			continue;
 		}
 		
-		//grab or put away forks
-		if (philoStates[input].stateNo == 0) grabForks(input);
-		else putAwayForks(input);
+		//instruct philosopher to grab or put away forks
+		if (philoStates[input].stateNo == 0) {
+			philoStates[input].stateNo = 1;
+			sem_post(&philoStates[input].updateSem);
+		}
+		else if (philoStates[input].stateNo == 2) {
+			philoStates[input].stateNo = 0;
+			sem_post(&philoStates[input].updateSem);
+		}
 	}
 }
 
