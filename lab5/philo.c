@@ -32,7 +32,10 @@ void* simulatePhilosopher(void* rawState) {
 		sem_wait(&state->updateSem);
 		
 		if (state->stateNo == 1) {
-			//attempt to eat, pick up forks
+			//print waiting state
+			printStatus();
+			
+			//attempt to eat, pick up forks once they're available
 			struct sembuf operations[4];
 			for (int i = 0; i < 2; i++) {
 				operations[i].sem_num = i ? index : ((index + 1) % 5);
@@ -46,13 +49,20 @@ void* simulatePhilosopher(void* rawState) {
 			}
 			semop(forks, operations, 4);
 			
-			//on success, set state to eating
+			//on success, set state to eating and reprint
 			state->stateNo = 2;
 			printStatus();
-			continue;
 		}
 		else {
 			//put away forks
+			struct sembuf operations[2];
+			for (int i = 0; i < 2; i++) {
+				operations[i].sem_num = i ? index : ((index + 1) % 5);
+				operations[i].sem_op = -1;
+				operations[i].sem_flg = 0;
+			}
+			semop(forks, operations, 2);
+			printStatus();
 		}
 	}
 }
@@ -96,9 +106,6 @@ int main() {
 		//grab or put away forks
 		if (philoStates[input].stateNo == 0) grabForks(input);
 		else putAwayForks(input);
-		
-		//print immediate changes
-		printStatus();
 	}
 }
 
