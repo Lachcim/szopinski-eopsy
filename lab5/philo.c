@@ -6,6 +6,8 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <semaphore.h>
+#include <sys/ipc.h>
+#include <sys/sem.h>
 #include <pthread.h>
 
 //philosopher structure with individual update semaphore
@@ -50,22 +52,34 @@ void printStatus() {
 	for (int i = 0; i < 5; i++)
 		printf("%d              %d            %d             %s\n",
 			i + 1,
-			1,
-			1,
+			semctl(forks, i, GETVAL),
+			semctl(forks, (i + 1) % 5, GETVAL),
 			STATES[philoStates[i].stateNo]);
-			
+	
 	//print prompt
 	printf("\n\nWho shall pick up or put down their forks: ");
 	fflush(stdout);
 }
 int main() {
-	//print initial status
-	printStatus();
+	//create semaphore set for forks
+	forks = semget(IPC_PRIVATE, 5, 0x1C0);
+	
+	//initialize semaphores to 1
+	struct sembuf operations[5];
+	for (int i = 0; i < 5; i++) {
+		operations[i].sem_num = i;
+		operations[i].sem_op = 1;
+		operations[i].sem_flg = 0;
+	}
+	semop(forks, operations, 5);
 	
 	//spawn five philosopher threads
 	pthread_t philosophers[5];
 	for (int i = 0; i < 5; i++)
 		pthread_create(&philosophers[i], NULL, simulatePhilosopher, &philoStates[i]);
+	
+	//print initial status
+	printStatus();
 	
 	//poll stdin for commands
 	while (true) {
