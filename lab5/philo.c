@@ -8,13 +8,15 @@
 #include <semaphore.h>
 #include <pthread.h>
 
-//table of philosophers
+//philosopher structure with individual update semaphore
 struct philoState_t {
 	int stateNo;
 	sem_t updateSem;
 };
-const char* STATES[] = {"Thinking", "Waiting", "Eating"};
+
+//table of philosophers and the semaphore set for their forks
 struct philoState_t philoStates[5] = {0};
+int forks = -1;
 
 void* simulatePhilosopher(void* rawState) {
 	//cast to proper pointer for ease of use
@@ -24,24 +26,6 @@ void* simulatePhilosopher(void* rawState) {
 		//wait for status change
 		sem_wait(&state->updateSem);
 	}
-}
-
-void printStatus() {
-	//clear screen
-	printf("\x1B[H\x1B[J");
-	
-	//print philosophers
-	printf("PHILOSOPHER    LEFT FORK    RIGHT FORK    STATUS\n");
-	for (int i = 0; i < 5; i++)
-		printf("%d              %d            %d             %s\n",
-			i + 1,
-			1,
-			1,
-			STATES[philoStates[i].stateNo]);
-			
-	//print prompt
-	printf("\n\nWho shall pick up or put down their forks: ");
-	fflush(stdout);
 }
 
 void grabForks(int philosopher) {
@@ -55,6 +39,25 @@ void putAwayForks(int philosopher) {
 	sem_post(&philoStates[philosopher].updateSem);
 }
 
+void printStatus() {
+	//state lookup table
+	static const char* STATES[] = {"Thinking", "Waiting", "Eating"};
+	
+	//clear screen and print philosophers
+	printf("\x1B[H\x1B[J");
+	printf("PHILOSOPHER    LEFT FORK    RIGHT FORK    STATUS\n");
+	
+	for (int i = 0; i < 5; i++)
+		printf("%d              %d            %d             %s\n",
+			i + 1,
+			1,
+			1,
+			STATES[philoStates[i].stateNo]);
+			
+	//print prompt
+	printf("\n\nWho shall pick up or put down their forks: ");
+	fflush(stdout);
+}
 int main() {
 	//print initial status
 	printStatus();
