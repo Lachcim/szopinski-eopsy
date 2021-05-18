@@ -20,13 +20,40 @@ struct philoState_t {
 struct philoState_t philoStates[5] = {0};
 int forks = -1;
 
+void printStatus();
+
 void* simulatePhilosopher(void* rawState) {
-	//cast to proper pointer for ease of use
+	//cast to proper pointer for ease of use, remember index
 	struct philoState_t* state = rawState;
+	int index = state - &philoStates[0];
 	
 	while (true) {
 		//wait for status change
 		sem_wait(&state->updateSem);
+		
+		if (state->stateNo == 1) {
+			//attempt to eat, pick up forks
+			struct sembuf operations[4];
+			for (int i = 0; i < 2; i++) {
+				operations[i].sem_num = i ? index : ((index + 1) % 5);
+				operations[i].sem_op = 0;
+				operations[i].sem_flg = 0;
+			}
+			for (int i = 2; i < 4; i++) {
+				operations[i].sem_num = (i - 2) ? index : ((index + 1) % 5);
+				operations[i].sem_op = 1;
+				operations[i].sem_flg = 0;
+			}
+			semop(forks, operations, 4);
+			
+			//on success, set state to eating
+			state->stateNo = 2;
+			printStatus();
+			continue;
+		}
+		else {
+			//put away forks
+		}
 	}
 }
 
@@ -36,42 +63,18 @@ void grabForks(int philosopher) {
 	sem_post(&philoStates[philosopher].updateSem);
 }
 void putAwayForks(int philosopher) {
+	//don't disturb waiting philosopher
+	if (philoStates[philosopher].stateNo == 1)
+		return;
+	
 	//set state to thinking and update philosopher
 	philoStates[philosopher].stateNo = 0;
 	sem_post(&philoStates[philosopher].updateSem);
 }
 
-void printStatus() {
-	//state lookup table
-	static const char* STATES[] = {"Thinking", "Waiting", "Eating"};
-	
-	//clear screen and print philosophers
-	printf("\x1B[H\x1B[J");
-	printf("PHILOSOPHER    LEFT FORK    RIGHT FORK    STATUS\n");
-	
-	for (int i = 0; i < 5; i++)
-		printf("%d              %d            %d             %s\n",
-			i + 1,
-			semctl(forks, i, GETVAL),
-			semctl(forks, (i + 1) % 5, GETVAL),
-			STATES[philoStates[i].stateNo]);
-	
-	//print prompt
-	printf("\n\nWho shall pick up or put down their forks: ");
-	fflush(stdout);
-}
 int main() {
 	//create semaphore set for forks
 	forks = semget(IPC_PRIVATE, 5, 0x1C0);
-	
-	//initialize semaphores to 1
-	struct sembuf operations[5];
-	for (int i = 0; i < 5; i++) {
-		operations[i].sem_num = i;
-		operations[i].sem_op = 1;
-		operations[i].sem_flg = 0;
-	}
-	semop(forks, operations, 5);
 	
 	//spawn five philosopher threads
 	pthread_t philosophers[5];
@@ -97,4 +100,25 @@ int main() {
 		//print immediate changes
 		printStatus();
 	}
+}
+
+void printStatus() {
+	//state lookup table
+	static const char* STATES[] = {"Thinking", "Waiting", "Eating"};
+	static const char* FORK_STATES[] = {"Available", "Taken    "};
+	
+	//clear screen and print philosophers
+	printf("\x1B[H\x1B[J");
+	printf("PHILOSOPHER    LEFT FORK    RIGHT FORK    STATUS\n");
+	
+	for (int i = 0; i < 5; i++)
+		printf("%d              %s    %s     %s\n",
+			i + 1,
+			FORK_STATES[semctl(forks, i, GETVAL)],
+			FORK_STATES[semctl(forks, (i + 1) % 5, GETVAL)],
+			STATES[philoStates[i].stateNo]);
+	
+	//print prompt
+	printf("\n\nWho shall pick up or put down their forks: ");
+	fflush(stdout);
 }
