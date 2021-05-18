@@ -16,9 +16,6 @@ struct philoState_t {
 const char* STATES[] = {"Thinking", "Waiting", "Eating"};
 struct philoState_t philoStates[5] = {0};
 
-//semaphore for the printer thread
-sem_t printerSem;
-
 void* simulatePhilosopher(void* rawState) {
 	//cast to proper pointer for ease of use
 	struct philoState_t* state = rawState;
@@ -29,27 +26,22 @@ void* simulatePhilosopher(void* rawState) {
 	}
 }
 
-void* printStatus(void* arg) {
-	while (true) {
-		//wait for status change
-		sem_wait(&printerSem);
-		
-		//clear screen
-		printf("\x1B[H\x1B[J");
-		
-		//print philosophers
-		printf("PHILOSOPHER    LEFT FORK    RIGHT FORK    STATUS\n");
-		for (int i = 0; i < 5; i++)
-			printf("%d              %d            %d             %s\n",
-				i + 1,
-				1,
-				1,
-				STATES[philoStates[i].stateNo]);
-				
-		//print prompt
-		printf("\n\nWho shall pick up or put down their forks: ");
-		fflush(stdout);
-	}
+void printStatus() {
+	//clear screen
+	printf("\x1B[H\x1B[J");
+	
+	//print philosophers
+	printf("PHILOSOPHER    LEFT FORK    RIGHT FORK    STATUS\n");
+	for (int i = 0; i < 5; i++)
+		printf("%d              %d            %d             %s\n",
+			i + 1,
+			1,
+			1,
+			STATES[philoStates[i].stateNo]);
+			
+	//print prompt
+	printf("\n\nWho shall pick up or put down their forks: ");
+	fflush(stdout);
 }
 
 void grabForks(int philosopher) {
@@ -64,10 +56,8 @@ void putAwayForks(int philosopher) {
 }
 
 int main() {
-	//spawn printer thread - will print on state change
-	pthread_t printer;
-	pthread_create(&printer, NULL, printStatus, NULL);
-	sem_post(&printerSem);
+	//print initial status
+	printStatus();
 	
 	//spawn five philosopher threads
 	pthread_t philosophers[5];
@@ -79,7 +69,7 @@ int main() {
 		//get input, discard invalid values
 		int input = getchar() - '1';
 		if (input < 0 || input >= 5) {
-			sem_post(&printerSem);
+			printStatus();
 			continue;
 		}
 		
@@ -88,6 +78,6 @@ int main() {
 		else putAwayForks(input);
 		
 		//print immediate changes
-		sem_post(&printerSem);
+		printStatus();
 	}
 }
