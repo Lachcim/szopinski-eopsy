@@ -4,8 +4,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-int copyReadWrite(const char*, const char*);
-int copyMmap(const char*, const char*);
+int copyReadWrite(int, int);
+int copyMmap(int, int);
 
 const char* const ERROR_MESSAGES[] = {
 	0,
@@ -43,36 +43,36 @@ int main(int argc, char** argv) {
 		return 1;
 	}
 	
+	//open source and destination files
+	int srcFd = open(argv[optind], O_RDONLY);
+	if (srcFd == -1) return 2;
+	int destFd = open(argv[optind + 1], O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR);
+	if (destFd == -1) return 3;
+	
 	//call the proper copying subroutine
 	int error = 0;
-	if (mapMode)
-		error = copyMmap(argv[optind], argv[optind + 1]);
-	else
-		error = copyReadWrite(argv[optind], argv[optind + 1]);
+	if (mapMode) error = copyMmap(srcFd, destFd);
+	else error = copyReadWrite(srcFd, destFd);
+	
+	//close file handles
+	close(srcFd);
+	close(destFd);
 	
 	//print error message and return error code
 	if (error) fputs(ERROR_MESSAGES[error], stderr);
 	return error;
 }
 
-int copyReadWrite(const char* src, const char* dest) {
-	//open source file
-	int srcFd = open(src, O_RDONLY);
-	if (srcFd == -1) return 2;
-	
-	//open destination file
-	int destFd = open(dest, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR);
-	if (destFd == -1) return 3;
-	
+int copyReadWrite(int src, int dest) {
 	//copy data
 	char buf[1024];
 	while (true) {
 		//read bytes from source
-		ssize_t byteCount = read(srcFd, buf, 1024);
+		ssize_t byteCount = read(src, buf, 1024);
 		if (byteCount == -1) return 4;
 		
 		//write bytes to destination
-		byteCount = write(destFd, buf, byteCount);
+		byteCount = write(dest, buf, byteCount);
 		if (byteCount == -1) return 5;
 		
 		//break when done
@@ -80,12 +80,9 @@ int copyReadWrite(const char* src, const char* dest) {
 			break;
 	}
 	
-	//close file handles and return
-	close(srcFd);
-	close(destFd);
 	return 0;
 }
 
-int copyMmap(const char* src, const char* dest) {
+int copyMmap(int src, int dest) {
 	return 0;
 }
