@@ -28,12 +28,14 @@ void* simulatePhilosopher(void* rawIndex) {
 	int index = (int*)rawIndex - (int*)&philoStates;
 	
 	//simulate dining and eating
-	printf("Philosopher %d grabbing fork\n", index);
-	grabForks(index);
-	printf("Philosopher %d eating\n", index);
-	sleep(2);
-	printf("Philosopher %d putting fork away\n", index);
-	putAwayForks(index);
+	while (true) {
+		printf("Philosopher %d grabbing fork\n", index);
+		grabForks(index);
+		printf("Philosopher %d eating\n", index);
+		sleep(2);
+		printf("Philosopher %d putting fork away\n", index);
+		putAwayForks(index);
+	}
 }
 
 void grabForks(int index) {
