@@ -22,16 +22,33 @@
     \section{Theory}
     
     In an operating system, multitasking is achieved by sharing CPU time across
-    multiple processes. For this purpose, the OS must employ an algorithm which
-    guarantees that all processes receive their CPU time in a fair and timely
-    manner.
-    
-    \subsection{Preemptive vs. non-preemptive}
-    
-    Scheduling is said to be preemptive if it can interrupt a process
-    mid-execution. In contrast, in the non-preemptive scheduling scheme, once a
-    process receives its CPU time, it may stall the execution of other processes
-    until it enters an I/O waiting state or terminates.
+    multiple processes. For this purpose, the OS keeps track of each running
+	process in what is known as a process table. Each process has a state
+	which determines whether it is currently given CPU time or not.
+	
+	There are three basic states:
+	
+	\begin{center}
+		\includegraphics[width=0.5\linewidth]{basic}
+	\end{center}
+	
+	A process cycles between each state multiple times within its lifetime. By
+	default, a process is in the running state. If an I/O operation is
+	required, the process enters the blocked state and waits until it is
+	completed. After that, it proceeds to the ready state and waits to be given
+	CPU time again.
+	
+	A CPU time scheduling model that is based on these three transitions is
+	known as \textit{non-preemptive} scheduling. In this scheme, once a process
+	is given CPU time, it holds it until it encounters an I/O block or it
+	terminates. A process which never blocks or terminates may stall the
+	execution of other processes indefinitely.
+	
+	However, a fourth transition is possible -- a process may leave the running
+	state and enter the ready state directly. This is the case in
+	\textit{preemptive} scheduling schemes, where the OS intentionally
+	interrupts the process to share CPU time across other processes. This kind
+	of scheduling is used in modern interactive operating systems.
     
     \subsection{Scheduling algorithms}
     
